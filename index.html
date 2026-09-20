@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f8fc" />
+    <meta name="description" content="MapMarket — товары и магазины рядом" />
+    <title>MapMarket</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css?v=20260921-1" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <aside class="desktop-sidebar">
+        <button class="brand" data-route="home" aria-label="MapMarket">
+          <img src="assets/mapmarket-logo.png" alt="" />
+          <span><b>MAPMARKET</b><small>Покупателям</small></span>
+        </button>
+        <nav id="desktopNav" class="desktop-nav"></nav>
+        <div class="sidebar-bottom">
+          <button class="soft-button" data-action="language"><i data-lucide="languages"></i><span data-i18n="language">Язык</span></button>
+          <button class="profile-mini" data-route="profile"><span id="sideAvatar">M</span><span><b id="sideName">Гость</b><small data-i18n="profile">Профиль</small></span></button>
+        </div>
+      </aside>
+
+      <main class="main-column">
+        <header class="topbar">
+          <button class="mobile-brand brand" data-route="home"><img src="assets/mapmarket-logo.png" alt="" /><b>MAPMARKET</b></button>
+          <div class="global-search">
+            <i data-lucide="search"></i>
+            <input id="globalSearch" autocomplete="off" data-i18n-placeholder="searchPlaceholder" placeholder="Поиск товаров и категорий" />
+            <button id="clearSearch" class="icon-button hidden" aria-label="Очистить"><i data-lucide="x"></i></button>
+            <div id="searchSuggestions" class="suggestions hidden"></div>
+          </div>
+          <button class="icon-button notification-button" data-route="notifications" aria-label="Уведомления"><i data-lucide="bell"></i><span id="notificationDot" class="notification-dot hidden"></span></button>
+        </header>
+
+        <section id="view" class="view" aria-live="polite"></section>
+      </main>
+
+      <nav id="mobileNav" class="mobile-nav"></nav>
+    </div>
+
+    <div id="modalRoot"></div>
+    <div id="toastRoot" class="toast-root"></div>
+    <input id="filePicker" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <script type="module" src="app.js?v=20260921-1"></script>
+  </body>
+</html>
