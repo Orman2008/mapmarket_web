@@ -15,6 +15,7 @@ const state = {
   language: localStorage.getItem('mm_web_language') || 'ru',
   products: [], shops: [], categories: [], favorites: new Set(), recent: JSON.parse(localStorage.getItem('mm_web_recent') || '[]'),
   chats: [], activeChat: null, pendingFile: null, map: null, markers: [], loading: false,
+  activeProduct: null, productImageIndex: 0,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -70,6 +71,7 @@ async function navigate(route, data=null) {
     else if(route==='profile') await renderProfile();
     else if(route==='notifications') await renderNotifications();
     else if(route==='search') await renderSearch(data || '');
+    else if(route==='product') await renderProductDetails(Number(data));
   } catch(error) { $('#view').innerHTML=emptyState('triangle-alert', error.message); }
   refreshIcons();
 }
@@ -102,7 +104,7 @@ function productCard(p) {
     ${discount>0?`<span class="discount">-${Math.round(discount)}%</span>`:''}
     <button class="favorite-button ${saved?'active':''}" data-favorite="${id}" aria-label="${t('favorites')}">${icon(saved?'heart':'heart',20)}</button>
     <div class="product-body"><h3>${esc(p.title||'Товар')}</h3><div class="product-meta">${esc(p.category||p.shop_name||'')}</div>
-    <div class="rating">${icon('star',16)} <b>${Number(p.average_rating||p.rating||0).toFixed(1)}</b><span>(${Number(p.reviews_count||0)})</span></div>
+    <div class="rating">${icon('star',16)} <b>${Number(p.product_average_rating||p.average_rating||p.rating||0).toFixed(1)}</b><span>(${Number(p.product_reviews_count||p.reviews_count||0)})</span></div>
     <div class="price-row">${p.old_price&&Number(p.old_price)>Number(p.price)?`<span class="old-price">${money(p.old_price)}</span>`:''}<span class="price">${money(p.price)}</span></div></div></article>`;
 }
 function productGrid(items){return items.length?`<div class="product-grid">${items.map(productCard).join('')}</div>`:emptyState();}
@@ -141,9 +143,21 @@ async function toggleFavorite(id,button){
   save?state.favorites.add(id):state.favorites.delete(id); button?.classList.toggle('active',save);button.innerHTML=icon('heart',20);refreshIcons();
 }
 
-async function showProduct(id){
-  const p=await api(`/products/${id}?lang=${state.language}`); state.recent=[p,...state.recent.filter(x=>Number(x.id)!==Number(id))].slice(0,20);localStorage.setItem('mm_web_recent',JSON.stringify(state.recent));
-  openModal(`<div class="detail-grid"><div><img class="detail-image" src="${esc(imageUrl(p.image_url||p.image_urls?.[0]))}" alt=""></div><div class="detail-info"><p class="eyebrow">${esc(p.category||'MAPMARKET')}</p><h1>${esc(p.title)}</h1><div class="rating">${icon('star')} <b>${Number(p.average_rating||0).toFixed(1)}</b> (${Number(p.reviews_count||0)})</div><div class="price-row" style="margin:20px 0"><span class="price">${money(p.price)}</span></div><p class="detail-description">${esc(p.description||'')}</p><div class="hero-actions"><button class="button" data-product-chat="${Number(p.shop_id)}">${icon('message-circle')} ${t('write')}</button><button class="button soft" data-store-route="${Number(p.shop_id)}">${icon('route')} ${t('route')}</button><button class="button ghost" data-product-reviews="${Number(p.id)}">${icon('star')} ${t('reviews')}</button></div></div></div>`,'',true);
+async function renderProductDetails(id){
+  const p=await api(`/products/${id}?lang=${state.language}`);
+  state.activeProduct=p; state.productImageIndex=0;
+  state.recent=[p,...state.recent.filter(x=>Number(x.id)!==Number(id))].slice(0,20);
+  localStorage.setItem('mm_web_recent',JSON.stringify(state.recent));
+  renderProductDetailsBody();
+}
+function renderProductDetailsBody(){
+  const p=state.activeProduct; if(!p)return;
+  const images=[...new Set([...(Array.isArray(p.image_urls)?p.image_urls:[]),p.image_url].filter(Boolean))];
+  const active=images[state.productImageIndex]||p.image_url;
+  const specs=[['Бренд',p.brand],['Модель',p.model],['Цвет',p.color],['Размер',p.size],['Наличие',p.in_stock===false?'Нет в наличии':'В наличии']].filter(([,v])=>v);
+  $('#view').innerHTML=`<button class="back-link" data-back-catalog>${icon('arrow-left')} Назад к товарам</button>
+    <section class="product-detail-page"><div class="product-gallery"><img class="detail-image" src="${esc(imageUrl(active))}" alt="${esc(p.title)}">${images.length>1?`<div class="gallery-thumbs">${images.map((src,index)=>`<button class="gallery-thumb ${index===state.productImageIndex?'active':''}" data-product-image="${index}"><img src="${esc(imageUrl(src))}" alt=""></button>`).join('')}</div>`:''}</div>
+    <div class="detail-info"><p class="eyebrow">${esc(p.category||'MAPMARKET')}</p><h1>${esc(p.title||'Товар')}</h1><p class="muted">${esc(p.shop_name||'Магазин')}</p><div class="rating">${icon('star')} <b>${Number(p.product_average_rating||p.average_rating||0).toFixed(1)}</b><span>(${Number(p.product_reviews_count||p.reviews_count||0)} отзывов)</span></div><div class="price-row detail-price"><span class="price">${money(p.price)}</span>${p.old_price&&Number(p.old_price)>Number(p.price)?`<span class="old-price">${money(p.old_price)}</span>`:''}</div><div class="hero-actions"><button class="button" data-product-chat="${Number(p.shop_id)}">${icon('message-circle')} ${t('write')}</button><button class="button soft" data-store-route="${Number(p.shop_id)}">${icon('route')} ${t('route')}</button><button class="button ghost" data-product-reviews="${Number(p.id)}">${icon('star')} ${t('reviews')}</button></div><section class="detail-section"><h2>Описание</h2><p class="detail-description">${esc(p.description||'Описание пока не добавлено.')}</p></section>${specs.length?`<section class="detail-section"><h2>Характеристики</h2><div class="spec-list">${specs.map(([label,value])=>`<div><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join('')}</div></section>`:''}</div></section>`;
 }
 
 async function showStore(shopId){
@@ -152,15 +166,32 @@ async function showStore(shopId){
 }
 
 async function renderMap(){
-  if(!state.shops.length)await loadShops(); $('#view').innerHTML=`${pageHead(t('map'),'MAPMARKET')}<div class="map-layout"><div class="map-panel"><div class="store-grid" style="grid-template-columns:1fr">${state.shops.map(storeCard).join('')}</div></div><div id="map"></div></div>`;
-  setTimeout(()=>{state.map?.remove();state.map=L.map('map').setView([41.3111,69.2406],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(state.map);state.shops.forEach(s=>{const lat=Number(s.latitude),lng=Number(s.longitude);if(Number.isFinite(lat)&&Number.isFinite(lng))L.marker([lat,lng]).addTo(state.map).bindPopup(`<b>${esc(s.name)}</b><br>${esc(s.address||'')}`);});},40);
+  if(!state.shops.length)await loadShops(); $('#view').innerHTML=`${pageHead(t('map'),'MAPMARKET')}<div class="map-layout"><div class="map-panel"><div class="store-grid" style="grid-template-columns:1fr">${state.shops.map(storeCard).join('')}</div></div><div id="map" class="map-loading"><div>${icon('map-pin',48)}<b>Загружаем карту…</b></div></div></div>`;
+  if(!window.L){$('#map').innerHTML=`<div class="map-fallback">${icon('map-pin',48)}<h2>Карта временно недоступна</h2><p>Выберите магазин слева — мы откроем маршрут в Google Maps.</p></div>`;refreshIcons();return;}
+  setTimeout(()=>{
+    try {
+      state.map?.remove();
+      state.map=window.L.map('map').setView([41.3111,69.2406],12);
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(state.map);
+      state.shops.forEach(s=>{
+        const lat=Number(s.latitude),lng=Number(s.longitude);
+        if(Number.isFinite(lat)&&Number.isFinite(lng)) {
+          window.L.marker([lat,lng]).addTo(state.map).bindPopup(`<b>${esc(s.name)}</b><br>${esc(s.address||'')}`);
+        }
+      });
+    } catch (_) {
+      $('#map').innerHTML=`<div class="map-fallback">${icon('map-pin',48)}<h2>Не удалось открыть карту</h2><p>Выберите магазин слева, чтобы построить маршрут.</p></div>`;
+      refreshIcons();
+    }
+  },40);
 }
 
 function openRoute(shopId){ const s=state.shops.find(x=>Number(x.id)===shopId); if(!s)return; const dest=`${s.latitude},${s.longitude}`; if(navigator.geolocation)navigator.geolocation.getCurrentPosition(pos=>window.open(`https://www.google.com/maps/dir/?api=1&origin=${pos.coords.latitude},${pos.coords.longitude}&destination=${dest}`,'_blank'),()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`,'_blank')); }
 
 async function renderChats(){
-  if(!requireAuth(()=>navigate('chats')))return navigate('home'); state.chats=await api('/chats');
-  $('#view').innerHTML=`${pageHead(t('chats'),'MAPMARKET')}<div class="chat-layout"><aside class="chat-list"><div class="chat-list-head"><b>${t('chats')}</b></div>${state.chats.length?state.chats.map(c=>`<button class="chat-thread" data-chat="${Number(c.chat_id||c.id)}"><span class="avatar">${esc((c.shop_name||'M')[0])}</span><span class="chat-thread-content"><b>${esc(c.shop_name||'Магазин')}</b><p>${esc(c.last_message||'')}</p></span><small>${esc(c.last_time||'')}</small></button>`).join(''):emptyState('message-circle')}</aside><section id="chatRoom" class="chat-room hidden-mobile"><div class="empty">${icon('message-circle',52)}<p>${t('chats')}</p></div></section></div>`;
+  if(!requireAuth(()=>navigate('chats')))return; state.chats=await api('/chats');
+  const threads=state.chats.length?state.chats.map(c=>`<button class="chat-thread" data-chat="${Number(c.chat_id||c.id)}"><span class="avatar">${esc((c.shop_name||'M')[0])}</span><span class="chat-thread-content"><b>${esc(c.shop_name||'Магазин')}</b><p>${esc(c.last_message||'Начните диалог')}</p></span><small>${esc(c.last_time||'')}</small></button>`).join(''):`<div class="chat-empty"><p>У вас ещё нет диалогов.</p><small>Откройте товар или выберите магазин, чтобы написать продавцу.</small><div class="chat-store-starts">${state.shops.slice(0,4).map(s=>`<button data-product-chat="${Number(s.id)}">${esc(s.name)}</button>`).join('')}</div></div>`;
+  $('#view').innerHTML=`${pageHead(t('chats'),'MAPMARKET')}<div class="chat-layout"><aside class="chat-list"><div class="chat-list-head"><b>${t('chats')}</b><span>${state.chats.length||''}</span></div>${threads}</aside><section id="chatRoom" class="chat-room hidden-mobile"><div class="empty">${icon('message-circle',52)}<h3>Выберите диалог</h3><p>Или начните новый чат из карточки товара.</p></div></section></div>`;
 }
 
 async function openChat(chatId,shopName='Магазин'){
@@ -171,7 +202,7 @@ async function openChat(chatId,shopName='Магазин'){
 function messageHtml(m){const mine=m.sender==='buyer';return `<div class="message ${mine?'mine':''}">${m.media_url?`<img src="${esc(imageUrl(m.media_url))}" alt="">`:''}${m.text&&m.text!=='📷 Фото'?`<div>${esc(m.text)}</div>`:''}<time>${esc(m.time||'')}</time></div>`;}
 async function sendChatMessage(){const input=$('#chatInput');const text=input.value.trim();if(!text&&!state.pendingFile)return;let media='';if(state.pendingFile){const form=new FormData();form.append('image',state.pendingFile);const uploaded=await api('/upload',{method:'POST',body:form});media=uploaded.url;}const saved=await api(`/chats/${state.activeChat}/messages`,{method:'POST',body:JSON.stringify({text:text||'📷 Фото',media_url:media})});$('#messages').insertAdjacentHTML('beforeend',messageHtml({...saved,sender:'buyer'}));input.value='';state.pendingFile=null;$('#attachmentPreview').innerHTML='';updateSendButton();$('#messages').scrollTop=$('#messages').scrollHeight;}
 
-async function startChat(shopId){if(!requireAuth())return;const chat=await api('/chats',{method:'POST',body:JSON.stringify({shop_id:shopId})});closeModal();await navigate('chats');await openChat(Number(chat.chat_id),chat.shop_name);}
+async function startChat(shopId){if(!requireAuth(()=>navigate('product',state.activeProduct?.id)))return;const chat=await api('/chats',{method:'POST',body:JSON.stringify({shop_id:shopId})});closeModal();await navigate('chats');await openChat(Number(chat.chat_id),chat.shop_name);}
 
 async function renderNotifications(){
   if(!requireAuth(()=>navigate('notifications')))return navigate('home');const data=await api('/users/me/notifications');$('#notificationDot').classList.add('hidden');await api('/users/me/notifications/read-all',{method:'PUT',body:'{}'});
@@ -199,7 +230,7 @@ function showHelp(){const topics=[['search','Поиск и карта','Това
 function showLanguage(){openModal(`<div class="settings-list">${[['ru','Русский'],['en','English'],['uz','O‘zbekcha']].map(([code,label])=>`<button class="list-card" data-language="${code}"><span class="list-icon">${code===state.language?icon('check'):icon('languages')}</span><span><b>${label}</b></span></button>`).join('')}</div>`,t('language'));}
 
 function showAuth(after){
-  openModal(`<div style="text-align:center"><img class="auth-logo" src="assets/mapmarket-logo.png" alt=""><h2>MapMarket</h2><p class="auth-copy">Войдите или создайте аккаунт покупателя</p></div><form id="authForm" class="form"><div class="field auth-name hidden"><label>Имя</label><input name="name"></div><div class="field"><label>Телефон</label><input name="phone" placeholder="+998 90 123 45 67" required></div><div class="field"><label>Пароль</label><input type="password" name="password" required minlength="8"></div><button class="button" name="mode" value="login">Войти</button><button type="button" class="button soft" data-register-toggle>Создать аккаунт</button></form>`,'');$('#authForm').dataset.after=after?'1':'';
+  openModal(`<div class="auth-intro"><img class="auth-logo" src="assets/mapmarket-logo.png" alt=""><div><p class="eyebrow">MAPMARKET</p><h2>Вход для покупателей</h2><p class="auth-copy">Войдите, чтобы сохранять товары, писать продавцам и получать покупки в кошелёк.</p></div></div><form id="authForm" class="form"><div class="field auth-name hidden"><label>Ваше имя</label><input name="name" autocomplete="name" placeholder="Например, Лола"></div><div class="field"><label>Номер телефона</label><input name="phone" autocomplete="tel" inputmode="tel" placeholder="+998 90 123 45 67" required></div><div class="field"><label>Пароль</label><input type="password" name="password" autocomplete="current-password" placeholder="Минимум 8 символов" required minlength="8"><small class="field-note">Не менее 8 символов, одна буква и одна цифра.</small></div><button class="button auth-submit" name="mode" value="login">Войти</button><button type="button" class="button soft" data-register-toggle>Создать аккаунт</button></form>`,'');$('#authForm').dataset.after=after?'1':'';
 }
 
 function openModal(content,title='',wide=false){$('#modalRoot').innerHTML=`<div class="modal-backdrop"><div class="modal ${wide?'wide':''}"><div class="modal-head"><h2>${esc(title)}</h2><button class="icon-button" data-close-modal>${icon('x')}</button></div><div class="modal-body">${content}</div></div></div>`;refreshIcons();}
@@ -212,13 +243,13 @@ function bindGlobalEvents(){
   document.addEventListener('click',async event=>{
     const route=event.target.closest('[data-route]');if(route){navigate(route.dataset.route);return;}
     const close=event.target.closest('[data-close-modal]');if(close||event.target.classList.contains('modal-backdrop')){closeModal();return;}
-    const product=event.target.closest('[data-product]');if(product&&!event.target.closest('[data-favorite]')){showProduct(Number(product.dataset.product));return;}
-    const fav=event.target.closest('[data-favorite]');if(fav){event.stopPropagation();toggleFavorite(Number(fav.dataset.favorite),fav);return;}
+    const product=event.target.closest('[data-product]');if(product&&!event.target.closest('[data-favorite]')){navigate('product',Number(product.dataset.product));return;}
+    const fav=event.target.closest('[data-favorite]');if(fav){event.stopPropagation();toggleFavorite(Number(fav.dataset.favorite),fav).catch(error=>toast(error.message,true));return;}
     const cat=event.target.closest('[data-category]');if(cat){navigate('catalog',cat.dataset.category);return;}
-    const store=event.target.closest('[data-store]');if(store){showStore(Number(store.dataset.store));return;}
+    const store=event.target.closest('[data-store]');if(store){showStore(Number(store.dataset.store)).catch(error=>toast(error.message,true));return;}
     const routeStore=event.target.closest('[data-store-route]');if(routeStore){openRoute(Number(routeStore.dataset.storeRoute));return;}
-    const chatStart=event.target.closest('[data-product-chat]');if(chatStart){startChat(Number(chatStart.dataset.productChat));return;}
-    const thread=event.target.closest('[data-chat]');if(thread){const row=state.chats.find(c=>Number(c.chat_id||c.id)===Number(thread.dataset.chat));openChat(Number(thread.dataset.chat),row?.shop_name);return;}
+    const chatStart=event.target.closest('[data-product-chat]');if(chatStart){startChat(Number(chatStart.dataset.productChat)).catch(error=>toast(error.message,true));return;}
+    const thread=event.target.closest('[data-chat]');if(thread){const row=state.chats.find(c=>Number(c.chat_id||c.id)===Number(thread.dataset.chat));openChat(Number(thread.dataset.chat),row?.shop_name).catch(error=>toast(error.message,true));return;}
     if(event.target.closest('[data-chat-photo]')){$('#filePicker').click();return;}
     if(event.target.closest('#chatSend')){sendChatMessage().catch(e=>toast(e.message,true));return;}
     if(event.target.closest('.mobile-chat-back')){$('#chatRoom').classList.add('hidden-mobile');return;}
@@ -233,6 +264,8 @@ function bindGlobalEvents(){
     if(event.target.closest('[data-action="language"]')){showLanguage();return;}
     const lang=event.target.closest('[data-language]');if(lang){state.language=lang.dataset.language;persistSession();closeModal();await Promise.all([loadProducts(),loadCategories()]);navigate(state.route);return;}
     if(event.target.closest('[data-register-toggle]')){const form=$('#authForm');form.classList.toggle('registering');$('.auth-name').classList.toggle('hidden');const reg=form.classList.contains('registering');event.target.textContent=reg?'У меня уже есть аккаунт':'Создать аккаунт';form.querySelector('button[name="mode"]').textContent=reg?'Зарегистрироваться':'Войти';return;}
+    if(event.target.closest('[data-product-image]')){state.productImageIndex=Number(event.target.closest('[data-product-image]').dataset.productImage);renderProductDetailsBody();refreshIcons();return;}
+    if(event.target.closest('[data-back-catalog]')){navigate('catalog');return;}
     const reviews=event.target.closest('[data-product-reviews]');if(reviews){showReviews(Number(reviews.dataset.productReviews));return;}
     if(event.target.closest('[data-delete-account]')){if(confirm('Удалить аккаунт без возможности восстановления?')){await api('/users/me',{method:'DELETE'});closeModal();logout();}return;}
     if(event.target.closest('[data-remove-card]')){localStorage.removeItem('mm_web_card');closeModal();toast('Карта удалена');return;}
@@ -241,7 +274,7 @@ function bindGlobalEvents(){
   document.addEventListener('submit',async event=>{
     event.preventDefault();const form=event.target;
     try{
-      if(form.id==='authForm'){const fd=new FormData(form);const registering=form.classList.contains('registering');const payload={phone:fd.get('phone'),password:fd.get('password'),client:'buyer',...(registering?{name:fd.get('name'),role:'buyer',language_code:state.language}:{})};const data=await api(registering?'/auth/register':'/auth/login',{method:'POST',body:JSON.stringify(payload)});state.token=data.token;state.user=data.user;persistSession();closeModal();await loadFavorites();renderNavigation();navigate('home');}
+      if(form.id==='authForm'){const fd=new FormData(form);const registering=form.classList.contains('registering');const phone=String(fd.get('phone')||'').replace(/[\s()-]/g,'');const payload={phone,password:fd.get('password'),client:'buyer',...(registering?{name:fd.get('name'),role:'buyer',language_code:state.language}:{})};const data=await api(registering?'/auth/register':'/auth/login',{method:'POST',body:JSON.stringify(payload)});state.token=data.token;state.user=data.user;persistSession();closeModal();await loadFavorites();renderNavigation();navigate('home');}
       if(form.id==='accountForm'){const fd=new FormData(form);const d=await api('/users/me/profile',{method:'PUT',body:JSON.stringify({name:fd.get('name'),language_code:state.language})});state.user=d.user;const avatar=fd.get('avatar');if(avatar?.size){const upload=new FormData();upload.append('avatar',avatar);const avatarResult=await api('/users/me/avatar',{method:'PUT',body:upload});state.user=avatarResult.user||state.user;}persistSession();closeModal();renderProfile();}
       if(form.id==='cardForm'){const fd=new FormData(form);localStorage.setItem('mm_web_card',JSON.stringify({number:fd.get('number'),expiry:fd.get('expiry')}));closeModal();toast('Карта сохранена');}
       if(form.id==='interestsForm'){const fd=new FormData(form);const categories=fd.getAll('category');if(categories.length!==3)throw new Error('Выберите ровно три категории.');await api('/users/me/preferences',{method:'POST',body:JSON.stringify({categories})});closeModal();toast('Интересы сохранены');}

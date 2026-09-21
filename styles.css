@@ -122,6 +122,11 @@ h2 { margin-bottom: 16px; font-size: clamp(20px, 2.5vw, 28px); }
 .map-layout { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 18px; height: calc(100vh - 150px); min-height: 520px; }
 .map-panel { overflow: auto; padding-right: 4px; }
 #map { width: 100%; height: 100%; min-height: 460px; border-radius: 26px; border: 1px solid var(--border); z-index: 1; }
+.map-loading, .map-fallback { display: grid; place-items: center; text-align: center; color: var(--muted); background: linear-gradient(135deg, #eaf1ff, #f8fbff); }
+.map-loading > div, .map-fallback { padding: 24px; }
+.map-loading b { display: block; margin-top: 10px; }
+.map-fallback h2 { margin: 12px 0 7px; color: var(--ink); }
+.map-fallback p { max-width: 280px; margin: 0; line-height: 1.5; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(9,17,34,.48); backdrop-filter: blur(5px); display: grid; place-items: center; padding: 18px; }
 .modal { width: min(680px, 100%); max-height: min(900px, 94vh); overflow: auto; background: white; border-radius: 28px; box-shadow: 0 28px 90px rgba(0,0,0,.24); }
 .modal.wide { width: min(1040px, 100%); }
@@ -132,6 +137,22 @@ h2 { margin-bottom: 16px; font-size: clamp(20px, 2.5vw, 28px); }
 .detail-image { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--surface-2); border-radius: 24px; }
 .detail-info h1 { font-size: clamp(26px,4vw,42px); }
 .detail-description { white-space: pre-wrap; color: var(--muted); line-height: 1.65; }
+.back-link { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 20px; border: 0; background: transparent; color: var(--ink); font-weight: 800; cursor: pointer; }
+.back-link:hover { color: var(--primary); }
+.product-detail-page { display: grid; grid-template-columns: minmax(320px, .95fr) minmax(360px, 1.05fr); gap: clamp(26px, 4vw, 56px); align-items: start; }
+.product-gallery { position: sticky; top: 106px; }
+.gallery-thumbs { display: flex; gap: 9px; margin-top: 12px; overflow: auto; padding-bottom: 3px; }
+.gallery-thumb { width: 64px; height: 64px; flex: 0 0 auto; padding: 3px; border: 2px solid transparent; background: var(--surface-2); border-radius: 14px; cursor: pointer; }
+.gallery-thumb.active { border-color: var(--primary); background: white; }
+.gallery-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 9px; }
+.detail-price { margin: 20px 0 8px; }
+.detail-section { margin-top: 28px; padding-top: 25px; border-top: 1px solid var(--border); }
+.detail-section h2 { font-size: 19px; margin-bottom: 12px; }
+.spec-list { display: grid; gap: 0; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+.spec-list div { display: flex; justify-content: space-between; gap: 20px; padding: 13px 15px; background: white; border-bottom: 1px solid var(--border); }
+.spec-list div:last-child { border-bottom: 0; }
+.spec-list span { color: var(--muted); }
+.spec-list b { text-align: right; }
 .form { display: grid; gap: 14px; }
 .field { display: grid; gap: 7px; }
 .field label { font-size: 13px; font-weight: 800; color: var(--muted); }
@@ -141,6 +162,13 @@ h2 { margin-bottom: 16px; font-size: clamp(20px, 2.5vw, 28px); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .auth-logo { width: 72px; margin: 4px auto 18px; }
 .auth-copy { text-align: center; color: var(--muted); margin-bottom: 20px; }
+.auth-intro { display: flex; align-items: center; gap: 15px; padding: 2px 0 16px; }
+.auth-intro .auth-logo { width: 62px; height: 62px; object-fit: contain; margin: 0; flex: 0 0 auto; }
+.auth-intro h2 { margin: 0 0 5px; font-size: 24px; }
+.auth-intro .eyebrow { margin-bottom: 2px; }
+.auth-intro .auth-copy { margin: 0; text-align: left; line-height: 1.45; font-size: 13px; }
+.field-note { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.auth-submit { margin-top: 4px; }
 .profile-hero { padding: 24px; border: 1px solid var(--border); background: white; border-radius: 26px; display: flex; align-items: center; gap: 18px; }
 .profile-hero .avatar { width: 76px; height: 76px; font-size: 24px; }
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 15px 0 28px; }
@@ -153,7 +181,14 @@ h2 { margin-bottom: 16px; font-size: clamp(20px, 2.5vw, 28px); }
 .wallet-item { border-radius: 16px; padding: 13px; background: rgba(255,255,255,.12); }
 .chat-layout { height: calc(100vh - 170px); min-height: 540px; display: grid; grid-template-columns: 350px 1fr; border: 1px solid var(--border); border-radius: 26px; background: white; overflow: hidden; }
 .chat-list { border-right: 1px solid var(--border); overflow: auto; }
-.chat-list-head { padding: 18px; border-bottom: 1px solid var(--border); }
+.chat-list-head { padding: 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.chat-list-head span { min-width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 800; }
+.chat-empty { padding: 24px 18px; color: var(--muted); text-align: center; }
+.chat-empty p { color: var(--ink); font-weight: 800; margin-bottom: 6px; }
+.chat-empty small { display: block; line-height: 1.5; }
+.chat-store-starts { display: grid; gap: 8px; margin-top: 18px; text-align: left; }
+.chat-store-starts button { border: 1px solid var(--border); border-radius: 13px; background: white; padding: 11px 12px; color: var(--ink); font-weight: 700; cursor: pointer; }
+.chat-store-starts button:hover { border-color: var(--primary); color: var(--primary); }
 .chat-thread { width: 100%; border: 0; background: white; padding: 14px 16px; display: flex; align-items: center; gap: 11px; text-align: left; cursor: pointer; }
 .chat-thread:hover, .chat-thread.active { background: var(--primary-soft); }
 .chat-thread-content { flex: 1; min-width: 0; }
@@ -214,6 +249,9 @@ h2 { margin-bottom: 16px; font-size: clamp(20px, 2.5vw, 28px); }
   .map-panel { max-height: 330px; margin-bottom: 14px; }
   #map { height: 54vh; min-height: 400px; }
   .detail-grid { grid-template-columns: 1fr; }
+  .product-detail-page { grid-template-columns: 1fr; gap: 22px; }
+  .product-gallery { position: static; }
+  .detail-image { aspect-ratio: 1/1; }
   .chat-layout { display: block; height: auto; min-height: 0; border: 0; background: transparent; }
   .chat-list { border: 1px solid var(--border); border-radius: 22px; background: white; }
   .chat-room { position: fixed; inset: 0; z-index: 80; background: white; }
@@ -234,4 +272,5 @@ h2 { margin-bottom: 16px; font-size: clamp(20px, 2.5vw, 28px); }
   .page-head { align-items: flex-start; }
   .form-row { grid-template-columns: 1fr; }
   .profile-hero { align-items: flex-start; }
+  .auth-intro { align-items: flex-start; }
 }
